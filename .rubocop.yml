@@ -47,7 +47,7 @@ Style/DateTime:
   Enabled: false
 
 # Please don't fail at failing.
-Lint/UnneededCopDisableDirective:
+Lint/RedundantCopDisableDirective:
   Enabled: false
 
 # Don't care
