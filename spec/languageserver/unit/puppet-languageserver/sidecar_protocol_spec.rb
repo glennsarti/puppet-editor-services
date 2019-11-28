@@ -145,7 +145,6 @@ describe 'PuppetLanguageServer::Sidecar::Protocol' do
     describe '#from_json!' do
       nodegraph_properties.each do |testcase|
         it "should deserialize a serialized #{testcase} value" do
-          #require 'pry'; binding.pry
           serial = subject.to_json
           deserial = subject_klass.new.from_json!(serial)
 
