@@ -79,9 +79,8 @@ module PuppetLanguageServer
 
     # These libraries require the puppet and LSP gems.
     %w[
-      global_queues
       sidecar_protocol
-      sidecar_queue
+      global_queues
       puppet_parser_helper
       puppet_helper
       facter_helper
@@ -234,41 +233,14 @@ module PuppetLanguageServer
     true
   end
 
-  def self.init_puppet_worker(options)
+  def self.init_puppet_worker(_options)
     # Remove all other logging destinations except for ours
     Puppet::Util::Log.destinations.clear
     Puppet::Util::Log.newdestination('null_logger')
 
     log_message(:info, "Using Facter v#{Facter.version}")
-    if options[:preload_puppet]
-      if featureflag?('puppetstrings')
-        log_message(:info, 'Preloading Default metadata (Async)...')
-        PuppetLanguageServer::PuppetHelper.load_default_aggregate_async
-
-        log_message(:info, 'Preloading Facter (Async)...')
-        PuppetLanguageServer::FacterHelper.load_facts_async
-      else
-        log_message(:info, 'Preloading Puppet Types (Async)...')
-        PuppetLanguageServer::PuppetHelper.load_default_types_async
-
-        log_message(:info, 'Preloading Facter (Async)...')
-        PuppetLanguageServer::FacterHelper.load_facts_async
-
-        log_message(:info, 'Preloading Functions (Async)...')
-        PuppetLanguageServer::PuppetHelper.load_default_functions_async
-
-        log_message(:info, 'Preloading Classes (Async)...')
-        PuppetLanguageServer::PuppetHelper.load_default_classes_async
-
-        log_message(:info, 'Preloading DataTypes (Async)...')
-        PuppetLanguageServer::PuppetHelper.load_default_datatypes_async
-      end
-
-      log_message(:info, 'Preloading static data (Async)...')
-      PuppetLanguageServer::PuppetHelper.load_static_data_async
-    else
-      log_message(:info, 'Skipping preloading Puppet')
-    end
+    log_message(:info, 'Preloading Facter (Async)...')
+    PuppetLanguageServer::FacterHelper.load_facts_async
   end
 
   def self.rpc_server(options)
