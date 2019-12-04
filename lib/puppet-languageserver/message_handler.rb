@@ -85,12 +85,8 @@ module PuppetLanguageServer
       session_state.documents
     end
 
-    def request_initialize(connection_id, json_rpc_message)
+    def request_initialize(_, json_rpc_message)
       PuppetLanguageServer.log_message(:debug, 'Received initialize method')
-
-      # This is a temporary module level variable.  It will be removed once PuppetHelper
-      # is refactored into a session_state style class
-      PuppetLanguageServer::PuppetHelper.connection_id = connection_id
 
       language_client.parse_lsp_initialize!(json_rpc_message.params)
       # Setup static registrations if dynamic registration is not available
@@ -135,7 +131,7 @@ module PuppetLanguageServer
       title = json_rpc_message.params['title']
       return LSP::PuppetResourceResponse.new('error' => 'Missing Typename') if type_name.nil?
 
-      resource_list = PuppetLanguageServer::PuppetHelper.get_puppet_resource(type_name, title, documents.store_root_path)
+      resource_list = PuppetLanguageServer::PuppetHelper.get_puppet_resource(session_state, type_name, title, documents.store_root_path)
       return LSP::PuppetResourceResponse.new('data' => '') if resource_list.nil? || resource_list.length.zero?
 
       content = resource_list.map(&:manifest).join("\n\n") + "\n"
@@ -148,7 +144,7 @@ module PuppetLanguageServer
       content = documents.document(file_uri)
 
       begin
-        node_graph = PuppetLanguageServer::PuppetHelper.get_node_graph(content, documents.store_root_path)
+        node_graph = PuppetLanguageServer::PuppetHelper.get_node_graph(session_state, content, documents.store_root_path)
         LSP::CompileNodeGraphResponse.new('dotContent' => node_graph.dot_content,
                                           'error'      => node_graph.error_content)
       rescue StandardError => e

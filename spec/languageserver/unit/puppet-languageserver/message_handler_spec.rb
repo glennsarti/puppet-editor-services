@@ -182,7 +182,7 @@ describe 'PuppetLanguageServer::MessageHandler' do
 
         context 'and resource face returns array with at least 2 elements' do
           before(:each) do
-            expect(PuppetLanguageServer::PuppetHelper).to receive(:get_puppet_resource).with(type_name, nil, Object).and_return(resource_response)
+            expect(PuppetLanguageServer::PuppetHelper).to receive(:get_puppet_resource).with(subject.session_state, type_name, nil, Object).and_return(resource_response)
           end
 
           it 'should call get_puppet_resource' do
@@ -214,7 +214,7 @@ describe 'PuppetLanguageServer::MessageHandler' do
 
         context 'and resource face returns a resource' do
           before(:each) do
-            expect(PuppetLanguageServer::PuppetHelper).to receive(:get_puppet_resource).with(type_name, title, Object).and_return(resource_response)
+            expect(PuppetLanguageServer::PuppetHelper).to receive(:get_puppet_resource).with(subject.session_state, type_name, title, Object).and_return(resource_response)
           end
 
           it 'should call resource_face_get_by_typename' do
@@ -268,7 +268,7 @@ describe 'PuppetLanguageServer::MessageHandler' do
         }
 
         before(:each) do
-          expect(PuppetLanguageServer::PuppetHelper).to receive(:get_node_graph).with(file_content, Object).and_return(mock_return)
+          expect(PuppetLanguageServer::PuppetHelper).to receive(:get_node_graph).with(subject.session_state, file_content, Object).and_return(mock_return)
         end
 
         it 'should reply with the error text' do
@@ -289,7 +289,7 @@ describe 'PuppetLanguageServer::MessageHandler' do
         }
 
         before(:each) do
-          expect(PuppetLanguageServer::PuppetHelper).to receive(:get_node_graph).with(file_content, Object).and_return(mock_return)
+          expect(PuppetLanguageServer::PuppetHelper).to receive(:get_node_graph).with(subject.session_state, file_content, Object).and_return(mock_return)
         end
 
         it 'should reply with dotContent' do
