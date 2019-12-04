@@ -3,7 +3,7 @@
 module PuppetLanguageServer
   module Manifest
     module HoverProvider
-      def self.resolve(content, line_num, char_num, options = {})
+      def self.resolve(session_state, content, line_num, char_num, options = {})
         options = {
           :tasks_mode => false
         }.merge(options)
@@ -18,7 +18,7 @@ module PuppetLanguageServer
         content = nil
         case item.class.to_s
         when 'Puppet::Pops::Model::ResourceExpression'
-          content = get_resource_expression_content(item)
+          content = get_resource_expression_content(session_state, item)
         when 'Puppet::Pops::Model::LiteralString'
           if path[-1].class == Puppet::Pops::Model::AccessExpression
             expr = path[-1].left_expr.expr.value
@@ -26,7 +26,7 @@ module PuppetLanguageServer
             content = get_hover_content_for_access_expression(path, expr)
           elsif path[-1].class == Puppet::Pops::Model::ResourceBody
             # We are hovering over the resource name
-            content = get_resource_expression_content(path[-2])
+            content = get_resource_expression_content(session_state, path[-2])
           end
         when 'Puppet::Pops::Model::VariableExpression'
           expr = item.expr.value
@@ -46,7 +46,7 @@ module PuppetLanguageServer
 
           resource_type_name = path[distance_up_ast - 1].type_name.value
           # Check if it's a Puppet Type
-          resource_object = PuppetLanguageServer::PuppetHelper.get_type(resource_type_name)
+          resource_object = PuppetLanguageServer::PuppetHelper.get_type(session_state, resource_type_name)
           unless resource_object.nil?
             # Check if it's a property
             attribute = resource_object.attributes[item.attribute_name.intern]
@@ -155,9 +155,9 @@ module PuppetLanguageServer
         content
       end
 
-      def self.get_resource_expression_content(item)
+      def self.get_resource_expression_content(session_state, item)
         # Get an instance of the type
-        item_object = PuppetLanguageServer::PuppetHelper.get_type(item.type_name.value)
+        item_object = PuppetLanguageServer::PuppetHelper.get_type(session_state, item.type_name.value)
         return get_puppet_type_content(item_object) unless item_object.nil?
         item_object = PuppetLanguageServer::PuppetHelper.get_class(item.type_name.value)
         return get_puppet_class_content(item_object) unless item_object.nil?
