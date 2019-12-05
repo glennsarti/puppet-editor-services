@@ -33,7 +33,7 @@ module PuppetLanguageServer
 
           content = get_hover_content_for_access_expression(path, expr)
         when 'Puppet::Pops::Model::CallNamedFunctionExpression'
-          content = get_call_named_function_expression_content(item, options[:tasks_mode])
+          content = get_call_named_function_expression_content(session_state, item, options[:tasks_mode])
         when 'Puppet::Pops::Model::AttributeOperation'
           # Get the parent resource class
           distance_up_ast = -1
@@ -143,10 +143,10 @@ module PuppetLanguageServer
         content
       end
 
-      def self.get_call_named_function_expression_content(item, tasks_mode)
+      def self.get_call_named_function_expression_content(session_state, item, tasks_mode)
         func_name = item.functor_expr.value
 
-        func_info = PuppetLanguageServer::PuppetHelper.function(func_name, tasks_mode)
+        func_info = PuppetLanguageServer::PuppetHelper.function(session_state, func_name, tasks_mode)
         raise "Function #{func_name} does not exist" if func_info.nil?
 
         content = "**#{func_name}** Function"
