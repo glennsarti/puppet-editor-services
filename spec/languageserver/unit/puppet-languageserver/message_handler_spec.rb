@@ -357,7 +357,7 @@ describe 'PuppetLanguageServer::MessageHandler' do
 
         context 'and an error during fixing the validation' do
           before(:each) do
-            expect(PuppetLanguageServer::Manifest::ValidationProvider).to receive(:fix_validate_errors).with(file_content).and_raise('MockError')
+            expect(PuppetLanguageServer::Manifest::ValidationProvider).to receive(:fix_validate_errors).with(subject.session_state, file_content).and_raise('MockError')
           end
 
           it 'should log an error message' do
@@ -394,7 +394,7 @@ describe 'PuppetLanguageServer::MessageHandler' do
           let(:applied_fixes) { 1 }
 
           before(:each) do
-            expect(PuppetLanguageServer::Manifest::ValidationProvider).to receive(:fix_validate_errors).with(file_content).and_return([applied_fixes, file_new_content])
+            expect(PuppetLanguageServer::Manifest::ValidationProvider).to receive(:fix_validate_errors).with(subject.session_state, file_content).and_return([applied_fixes, file_new_content])
           end
 
           it 'should reply with the document uri' do
@@ -426,7 +426,7 @@ describe 'PuppetLanguageServer::MessageHandler' do
           let(:applied_fixes) { 0 }
 
           before(:each) do
-            expect(PuppetLanguageServer::Manifest::ValidationProvider).to receive(:fix_validate_errors).with(file_content).and_return([applied_fixes, file_content])
+            expect(PuppetLanguageServer::Manifest::ValidationProvider).to receive(:fix_validate_errors).with(subject.session_state, file_content).and_return([applied_fixes, file_content])
           end
 
           it 'should reply with the document uri' do
