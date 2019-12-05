@@ -218,9 +218,6 @@ module PuppetLanguageServer
     log_message(:debug, "Detected additional puppet settings #{options[:puppet_settings]}")
     options[:puppet_settings].nil? ? Puppet.initialize_settings : Puppet.initialize_settings(options[:puppet_settings])
 
-    log_message(:info, 'Initializing Puppet Helper...')
-    PuppetLanguageServer::PuppetHelper.initialize_helper(options)
-
     log_message(:info, 'Initializing settings...')
     if options[:fast_start_langserver]
       Thread.new do
