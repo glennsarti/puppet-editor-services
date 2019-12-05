@@ -58,7 +58,7 @@ module PuppetLanguageServer
           end
           # Check if it's a Puppet Class / Defined Type
           if resource_object.nil?
-            resource_object = PuppetLanguageServer::PuppetHelper.get_class(resource_type_name)
+            resource_object = PuppetLanguageServer::PuppetHelper.get_class(session_state, resource_type_name)
             content = get_attribute_class_parameter_content(resource_object, item.attribute_name) unless resource_object.nil?
           end
           raise "#{resource_type_name} is not a valid puppet type, class or defined type" if resource_object.nil?
@@ -159,7 +159,7 @@ module PuppetLanguageServer
         # Get an instance of the type
         item_object = PuppetLanguageServer::PuppetHelper.get_type(session_state, item.type_name.value)
         return get_puppet_type_content(item_object) unless item_object.nil?
-        item_object = PuppetLanguageServer::PuppetHelper.get_class(item.type_name.value)
+        item_object = PuppetLanguageServer::PuppetHelper.get_class(session_state, item.type_name.value)
         return get_puppet_class_content(item_object) unless item_object.nil?
         raise "#{item.type_name.value} is not a valid puppet type"
       end
