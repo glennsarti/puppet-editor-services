@@ -101,7 +101,7 @@ describe 'PuppetLanguageServer::Manifest::ValidationProvider' do
 
   describe '#validate' do
     describe "Given an incomplete manifest which has syntax errors" do
-      let(:manifest) { 'user { "Bob"' }
+      let(:manifest) { "user { 'Bob'" }
 
       it "should return at least one error" do
         result = subject.validate(manifest)
