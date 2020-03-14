@@ -51,6 +51,16 @@ def populate_cache(cache)
   nil
 end
 
+# Monkey Patch required for Type Inferencer
+require 'puppet/pal/pal_api'
+require 'puppet/pal/compiler'
+class Puppet::Pal::Compiler
+  def public_top_scope
+    topscope
+  end
+end
+# End Monkey patch
+
 # Sidecar Protocol Helpers
 def add_default_basepuppetobject_values!(value)
   value.key = :key

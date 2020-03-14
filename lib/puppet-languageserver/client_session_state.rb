@@ -3,6 +3,7 @@
 require 'puppet-languageserver/session_state/document_store'
 require 'puppet-languageserver/session_state/language_client'
 require 'puppet-languageserver/session_state/object_cache'
+require 'puppet-languageserver/sidecar_protocol'
 
 module PuppetLanguageServer
   class ClientSessionState
