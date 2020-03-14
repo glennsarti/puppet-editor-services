@@ -16,33 +16,16 @@ Dir.new(vendor_dir)
     $LOAD_PATH.unshift(File.join(vendor,'lib'))
 end
 
-puts "Tick tock..."
+puts "Tick tock loading puppet..."
 require 'puppet'
 require 'pp'
 puts "--- Time to rock-n-roll"
 
 puts "loading bolt data..."
 require 'puppet_languageserver'
-%w[
-  validation_queue
-  sidecar_protocol
-  sidecar_queue
-  puppet_parser_helper
-  puppet_helper
-  facter_helper
-  uri_helper
-  puppet_monkey_patches
-  providers
-].each do |lib|
-  begin
-    require "puppet-languageserver/#{lib}"
-  rescue LoadError
-    require File.expand_path(File.join(File.dirname(__FILE__), 'puppet-languageserver', lib))
-  end
-end
-PuppetLanguageServer::PuppetHelper.initialize_helper
-PuppetLanguageServer::PuppetHelper.load_static_data
-
+require 'puppet-languageserver/client_session_state'
+session_state = PuppetLanguageServer::ClientSessionState.new(nil, connection_id: 'mock')
+session_state.load_static_data!(false)
 
 def recurse_showast(item, depth = 0)
   output = "  " * depth
@@ -136,7 +119,7 @@ content = <<-EOT
 EOT
 
 # content = '$result2 = fqdn_rand(30)'
-content = <<-EOT
+xxcontent = <<-EOT
 $var1 = ["a", "b"]
 $var2 = $var1.map |$p1| { 2 }
 $var3 = map($var1) |$p2| { 2 }
@@ -152,8 +135,8 @@ ast = parser.parse_string(content, '')
 recurse_showast(ast.model)
 puts "---------------"
 
-require 'puppet-languageserver/manifest/manifest_inferencer'
-inferrer = PuppetLanguageServer::Manifest::ManifestInferencer::ManifestInferences.new(PuppetLanguageServer::PuppetHelper.cache)
+require 'puppet-languageserver/manifest/inferencer'
+inferrer = PuppetLanguageServer::Manifest::Inferencer.new(session_state)
 inferrer.debug = true
 inferrer.infer(ast)
 puts "---- INFERRED"

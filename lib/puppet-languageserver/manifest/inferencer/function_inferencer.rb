@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-#require 'puppet/pops/types/type_factory'
-#require 'puppet/pops/types/type_parser'
+require 'puppet/pops/types/type_factory'
+require 'puppet/pops/types/type_parser'
 
 module PuppetLanguageServer
   module Manifest
-    module ManifestInferencer
-      class ManifestFunctionInferencer
+    class Inferencer
+      class FunctionInferencer
         def initialize(type_detector, object_cache = nil)
           @type_detector = type_detector
           @object_cache = object_cache

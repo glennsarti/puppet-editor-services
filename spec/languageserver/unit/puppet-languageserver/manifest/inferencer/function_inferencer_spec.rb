@@ -1,5 +1,5 @@
 require 'spec_helper'
-require 'puppet-languageserver/manifest/manifest_inferencer'
+require 'puppet-languageserver/manifest/inferencer'
 
 # Monkey Patch
 require 'puppet/pal/pal_api'
@@ -13,7 +13,7 @@ end
 
 RSpec::Matchers.define :be_an_inference do |name = nil, klass = nil|
   match do |actual|
-    return false unless actual.is_a?(PuppetLanguageServer::Manifest::ManifestInferencer::BaseInference)
+    return false unless actual.is_a?(PuppetLanguageServer::Manifest::Inferencer::BaseInference)
 
     (name.nil? || actual.name == name) && (klass.nil? || actual.is_a?(klass))
   end
@@ -54,7 +54,7 @@ end
 RSpec.shared_examples 'a type detector' do |var_name|
   it "detects variable called #{var_name} the same as a real Puppet compiler" do
     inferencer, varmap = inference_and_actual_result(content, true)
-    item = inferencer.find(var_name, PuppetLanguageServer::Manifest::ManifestInferencer::VariableInference)
+    item = inferencer.find(var_name, PuppetLanguageServer::Manifest::Inferencer::VariableInference)
     expect(item).to be_an_inference
 
     expect(item.puppet_type).to be_a(Puppet::Pops::Types::PuppetObject)
@@ -65,7 +65,7 @@ end
 RSpec.shared_examples 'an exact type detector' do |var_name|
   it "detects variable called #{var_name} the same as a real Puppet compiler" do
     inferencer, varmap = inference_and_actual_result(content, true)
-    item = inferencer.find(var_name, PuppetLanguageServer::Manifest::ManifestInferencer::VariableInference)
+    item = inferencer.find(var_name, PuppetLanguageServer::Manifest::Inferencer::VariableInference)
     expect(item).to be_an_inference
 
     expect(item.puppet_type).to be_a(Puppet::Pops::Types::PuppetObject)
@@ -76,7 +76,7 @@ end
 RSpec.shared_examples 'a type inferrer' do |var_name, puppet_typename|
   it "detects variable called #{var_name} of type #{puppet_typename}" do
     result = inference_result(content)
-    item = result.find(var_name, PuppetLanguageServer::Manifest::ManifestInferencer::VariableInference)
+    item = result.find(var_name, PuppetLanguageServer::Manifest::Inferencer::VariableInference)
     expect(item).to be_an_inference
 
     expect(item.puppet_type).to be_a(Puppet::Pops::Types::PuppetObject)
@@ -87,7 +87,7 @@ end
 RSpec.shared_examples 'an exact type inferrer' do |var_name, puppet_typename|
   it "detects variable called #{var_name} of type #{puppet_typename}" do
     inferencer = inference_result(content)
-    item = inferencer.find(var_name, PuppetLanguageServer::Manifest::ManifestInferencer::VariableInference)
+    item = inferencer.find(var_name, PuppetLanguageServer::Manifest::Inferencer::VariableInference)
     expect(item).to be_an_inference
 
     expect(item.puppet_type).to be_a(Puppet::Pops::Types::PuppetObject)
@@ -95,13 +95,13 @@ RSpec.shared_examples 'an exact type inferrer' do |var_name, puppet_typename|
   end
 end
 
-describe 'PuppetLanguageServer::Manifest::ManifestInferencer' do
-  describe 'PuppetLanguageServer::Manifest::ManifestInferencer::ManifestFunctionInferencer' do
+describe 'PuppetLanguageServer::Manifest::Inferencer' do
+  describe 'PuppetLanguageServer::Manifest::Inferencer::FunctionInferencer' do
     def inference_result(content, tasks_mode = true)
       parser = Puppet::Pops::Parser::Parser.new
       ast = parser.singleton_parse_string(content, tasks_mode, '')
 
-      inferencer = PuppetLanguageServer::Manifest::ManifestInferencer::ManifestInferences.new
+      inferencer = PuppetLanguageServer::Manifest::Inferencer.new
       inferencer.infer(ast)
       inferencer
     end
@@ -110,7 +110,7 @@ describe 'PuppetLanguageServer::Manifest::ManifestInferencer' do
       parser = Puppet::Pops::Parser::Parser.new
       ast = parser.singleton_parse_string(content, tasks_mode, '')
 
-      inferencer = PuppetLanguageServer::Manifest::ManifestInferencer::ManifestInferences.new
+      inferencer = PuppetLanguageServer::Manifest::Inferencer.new
       inferencer.infer(ast)
 
       Puppet.initialize_settings unless Puppet.settings.global_defaults_initialized?
