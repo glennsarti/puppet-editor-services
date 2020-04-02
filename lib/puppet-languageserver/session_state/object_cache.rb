@@ -118,11 +118,16 @@ module PuppetLanguageServer
       end
 
       # section => <Type of object in the file :function, :type, :class, :datatype>
-      def objects_by_section(section, &_block)
+      def objects_by_section(section, options = {}, &_block)
         return if section.nil?
+        options = {
+          :exclude_origins => []
+        }.merge(options)
+
         @cache_lock.synchronize do
-          @inmemory_cache.each do |_, sections|
+          @inmemory_cache.each do |origin, sections|
             next if sections.nil? || sections[section].nil? || sections[section].empty?
+            next if options[:exclude_origins].include?(origin)
             sections[section].each { |i| yield i.key, i }
           end
         end

@@ -26,6 +26,16 @@ RSpec::Matchers.define :be_completion_item_with_type do |value|
   end
 end
 
+RSpec::Matchers.define :include_completion_item do |item_kind, item_name|
+  match do |actual|
+    actual.items.any? { |item| item.kind == item_kind && item.label == item_name.to_s }
+  end
+
+  description do
+    "include a Completion Item with kind #{item_kind} and name #{item_name}"
+  end
+end
+
 # Custom matcher which compares JSON
 # representation of objects
 RSpec::Matchers.define :be_json_like do |expected|
@@ -70,6 +80,49 @@ end
 describe 'completion_provider' do
   let(:session_state) { PuppetLanguageServer::ClientSessionState.new(nil, :connection_id => 'mock') }
   let(:subject) { PuppetLanguageServer::Manifest::CompletionProvider }
+  let(:completion_options) { {} }
+
+  let(:no_param_function) do
+    object = random_sidecar_puppet_function(:no_param_function)
+    object.function_version = 4
+
+    sig = PuppetLanguageServer::Sidecar::Protocol::PuppetFunctionSignature.new
+    sig.key = object.key.to_s
+    sig.doc = object.doc
+    sig.return_types = ['Any']
+    sig.parameters = []
+
+    object.signatures = [sig]
+    object
+  end
+
+  let(:one_param_function) do
+    object = random_sidecar_puppet_function(:one_param_function)
+    object.function_version = 4
+
+    sig = PuppetLanguageServer::Sidecar::Protocol::PuppetFunctionSignature.new
+    sig.key = object.key.to_s
+    sig.doc = object.doc
+    sig.return_types = ['Any']
+    sig.parameters = [random_sidecar_puppet_function_signature_parameter]
+
+    object.signatures = [sig]
+    object
+  end
+
+  let(:spec_data_type_attr_name) { 'attr1' }
+  let(:spec_data_type) do
+    object = random_sidecar_puppet_datatype
+    object.key = :SpecDataType
+    object.is_type_alias = false
+    object.alias_of = nil
+
+    type_attr = random_sidecar_puppet_datatype_attribute
+    type_attr.key = spec_data_type_attr_name
+
+    object.attributes = [type_attr]
+    object
+  end
 
   before(:each) do
     populate_cache(session_state.object_cache)
@@ -82,22 +135,24 @@ describe 'completion_provider' do
     session_state.object_cache.import_sidecar_list!(list, :class, :workspace)
     # Functions
     list = PuppetLanguageServer::Sidecar::Protocol::PuppetFunctionList.new
-    list << random_sidecar_puppet_function
+    list << no_param_function
+    list << one_param_function
     session_state.object_cache.import_sidecar_list!(list, :function, :workspace)
-    # Types
-    list = PuppetLanguageServer::Sidecar::Protocol::PuppetTypeList.new
-    list << random_sidecar_puppet_type
-    session_state.object_cache.import_sidecar_list!(list, :type, :workspace)
+    # DataTypes
+    list = PuppetLanguageServer::Sidecar::Protocol::PuppetDataTypeList.new
+    list << spec_data_type
+    session_state.object_cache.import_sidecar_list!(list, :datatype, :workspace)
   end
 
   describe '#complete' do
     describe "Given an incomplete manifest which has syntax errors" do
       it "should raise an error" do
-        expect{subject.complete(session_state, 'user { "Bob"', 0, 1)}.to raise_error(RuntimeError)
+        expect{subject.complete(session_state, 'user { "Bob"', 0, 1, completion_options)}.to raise_error(RuntimeError)
       end
     end
 
     context 'Given a Puppet Plan', :if => Puppet.tasks_supported? do
+      let(:completion_options) { { tasks_mode: true } }
       let(:content) { <<-EOT
         plan mymodule::my_plan(
         ) {
@@ -107,15 +162,109 @@ describe 'completion_provider' do
       }
 
       it "should not raise an error" do
-        result = subject.complete(session_state, content, 0, 1, { :tasks_mode => true})
+        result = subject.complete(session_state, content, 0, 1, completion_options)
       end
 
       it 'should suggest Bolt functions' do
         expect(session_state.static_data_loaded?).to eq(true)
-        result = subject.complete(session_state, content, 2, 1, { :tasks_mode => true})
+        result = subject.complete(session_state, content, 2, 1, completion_options)
 
         expect(completion_item_with_type_and_name(result, 'function', 'run_task')).to_not be_nil
       end
+    end
+
+    context "When completing after typing a period" do
+      subject(:result) { PuppetLanguageServer::Manifest::CompletionProvider.complete(session_state, content, line_num, char_num, completion_options) }
+
+      let(:completion_options) do
+        {
+          context: LSP::CompletionContext.new({ 'triggerKind' => LSP::CompletionTriggerKind::TRIGGERCHARACTER, 'triggerCharacter' => '.' })
+        }
+      end
+
+      context 'with a manifest using a core datatype with no attributes or functions' do
+        let(:content) do
+<<-EOT
+$var1 = [1, 2, 3]
+
+$var1.
+
+EOT
+        end
+        let(:line_num) { 2 }
+        let(:char_num) { 6 }
+        let(:expected_types) { ['function'] }
+        let(:unexpected_types) { ['keyword', 'resource_type', 'resource_class'] }
+
+        it 'should only return functions' do
+          result.items.each do |item|
+            expect(item).to be_completion_item_with_type(expected_types)
+          end
+
+          expected_types.each do |typename|
+            expect(number_of_completion_item_with_type(result, typename)).to be > 0
+          end
+
+          result.items.each do |item|
+            expect(item).to_not be_completion_item_with_type(unexpected_types)
+          end
+        end
+
+        it 'should return functions with at least one parameter' do
+          expect(result).to include_completion_item(LSP::CompletionItemKind::FUNCTION, one_param_function.key)
+
+          expect(result).to_not include_completion_item(LSP::CompletionItemKind::FUNCTION, no_param_function.key)
+        end
+      end
+
+      context 'with a manifest using a custom datatype with attributes and functions' do
+        let(:content) do
+<<-EOT
+$var1 = SpecDataType[0]
+
+$var1.
+
+EOT
+        end
+        let(:line_num) { 2 }
+        let(:char_num) { 6 }
+        let(:expected_types) { ['function', 'datatype_attribute'] }
+        let(:unexpected_types) { ['keyword', 'resource_type', 'resource_class'] }
+
+        it 'should only return functions and datatype_attributes' do
+          result.items.each do |item|
+            expect(item).to be_completion_item_with_type(expected_types)
+          end
+
+          expect(result).to include_completion_item(LSP::CompletionItemKind::PROPERTY, spec_data_type_attr_name)
+        end
+
+        # TODO: Test for data type functions
+      end
+
+      RSpec.shared_examples 'a function only completer' do |name, manifest|
+        context "after a #{name}" do
+          let(:content) { '$var = ' + manifest + '.' }
+          let(:line_num) { 0 }
+          let(:char_num) { 8 + manifest.length }
+          let(:expected_types) { ['function'] }
+
+          it 'should only return functions' do
+            #require 'pry'; binding.pry
+            result.items.each do |item|
+              expect(item).to be_completion_item_with_type(expected_types)
+            end
+          end
+        end
+      end
+
+      include_examples 'a function only completer', 'literal hash', '{ "1" => "2" }'
+      include_examples 'a function only completer', 'literal array', '[1, 2, 3]'
+      include_examples 'a function only completer', 'number', '1'
+      include_examples 'a function only completer', 'string', '"abc123"'
+      include_examples 'a function only completer', 'lambda', '[1,2,3].map |$items| { $items * 10 }'
+      include_examples 'a function only completer', 'class', 'class test () {}'
+      include_examples 'a function only completer', 'core type', 'Integer[0]'
     end
 
     context "Given a simple valid manifest" do
@@ -150,7 +299,7 @@ EOT
 
         [0, 9].each do |line_num|
           it "should return a list of keyword, resource_type, function, resource_class regardless of cursor location (Testing line #{line_num})" do
-            result = subject.complete(session_state, content, line_num, char_num)
+            result = subject.complete(session_state, content, line_num, char_num, completion_options)
 
             result.items.each do |item|
               expect(item).to be_completion_item_with_type(expected_types)
@@ -172,7 +321,7 @@ EOT
           let(:expected_types) { ['keyword','resource_type','resource_class'] }
 
           it 'should return a list of keyword, resource_type, resource_class' do
-            result = subject.complete(session_state, content, testcase[:line_num], char_num)
+            result = subject.complete(session_state, content, testcase[:line_num], char_num, completion_options)
 
             result.items.each do |item|
               expect(item).to be_completion_item_with_type(expected_types)
@@ -191,7 +340,7 @@ EOT
         let(:expected_types) { ['resource_parameter','resource_property'] }
 
         it 'should return a list of resource_parameter, resource_property' do
-          result = subject.complete(session_state, content, line_num, char_num)
+          result = subject.complete(session_state, content, line_num, char_num, completion_options)
 
           result.items.each do |item|
             expect(item).to be_completion_item_with_type(expected_types)
@@ -227,7 +376,7 @@ EOT
         let(:expected_types) { ['keyword','resource_type','function','resource_class'] }
 
         it "should return a list of keyword, resource_type, function, resource_class" do
-          result = subject.complete(session_state, content_empty, line_num, char_num)
+          result = subject.complete(session_state, content_empty, line_num, char_num, completion_options)
 
           result.items.each do |item|
             expect(item).to be_completion_item_with_type(expected_types)
@@ -245,7 +394,7 @@ EOT
         let(:expected_types) { ['keyword','resource_type','function','resource_class'] }
 
         it "should return a list of keyword, resource_type, function, resource_class" do
-          result = subject.complete(session_state, content_simple, line_num, char_num)
+          result = subject.complete(session_state, content_simple, line_num, char_num, completion_options)
 
           result.items.each do |item|
             expect(item).to be_completion_item_with_type(expected_types)
@@ -272,7 +421,7 @@ EOT
         let(:char_num) { 16 }
 
         it 'should return a list of facts' do
-          result = subject.complete(session_state, content, line_num, char_num)
+          result = subject.complete(session_state, content, line_num, char_num, completion_options)
 
           result.items.each do |item|
             expect(item).to be_completion_item_with_type('variable_expr_fact')
@@ -291,7 +440,7 @@ EOT
         let(:char_num) { 16 }
 
         it 'should return a list of facts' do
-          result = subject.complete(session_state, content, line_num, char_num)
+          result = subject.complete(session_state, content, line_num, char_num, completion_options)
 
           result.items.each do |item|
             expect(item).to be_completion_item_with_type('variable_expr_fact')
@@ -310,7 +459,7 @@ EOT
         let(:char_num) { 16 }
 
         it 'should return a list of facts' do
-          result = subject.complete(session_state, content, line_num, char_num)
+          result = subject.complete(session_state, content, line_num, char_num, completion_options)
 
           result.items.each do |item|
             expect(item).to be_completion_item_with_type('variable_expr_fact')
@@ -706,6 +855,49 @@ EOT
           result = subject.resolve(session_state, @resolve_request)
           expect(result.insertText).to match(/.+/)
           expect(result.insertTextFormat).to eq(LSP::InsertTextFormat::SNIPPET)
+        end
+      end
+    end
+
+    context 'when resolving a datatype_attribute request' do
+      let(:content) { "$var1 = SpecDataType[0]\n$var1." }
+      let(:completion_options) do
+        {
+          context: LSP::CompletionContext.new({ 'triggerKind' => LSP::CompletionTriggerKind::TRIGGERCHARACTER, 'triggerCharacter' => '.' })
+        }
+      end
+      let(:line_num) { 1 }
+      let(:char_num) { 6 }
+
+      before(:each) do
+        # Generate the resolution request based on a completion response
+        completion_response = subject.complete(session_state, content, line_num, char_num, completion_options)
+        @resolve_request = completion_response.items.find do |item|
+          item.label == spec_data_type_attr_name && item.kind == LSP::CompletionItemKind::PROPERTY
+        end
+        raise RuntimeError, "#{spec_data_type_attr_name} property could not be found" if @resolve_request.nil?
+      end
+
+      context 'for an unknown attribute' do
+        it 'should return the original request' do
+          @resolve_request.data['datatype'] = 'type_not_found'
+          result = subject.resolve(session_state, @resolve_request)
+          expect(result).to be_json_like(@resolve_request)
+        end
+      end
+
+      context 'for a known attribute' do
+        it 'should return a text literal with the attribute defintion' do
+          result = subject.resolve(session_state, @resolve_request)
+          expect(result.insertText).to match(/.+/)
+          expect(result.insertTextFormat).to be_nil
+        end
+
+        it 'should add the return type and documentation' do
+          result = subject.resolve(session_state, @resolve_request)
+          expect(result.documentation).to match(/#{spec_data_type.attributes[0].types}/)
+          expect(result.documentation).to match(/#{spec_data_type.attributes[0].doc}/)
+          expect(result.insertTextFormat).to be_nil
         end
       end
     end

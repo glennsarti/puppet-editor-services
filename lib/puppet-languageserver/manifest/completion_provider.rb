@@ -35,6 +35,14 @@ module PuppetLanguageServer
           return response
         end
 
+        # A trigger character of '.' is a special case
+        if is_trigger_char && options[:context].triggerCharacter == '.'
+          response = LSP::CompletionList.new
+          response.items = complete_method_items(result, session_state, options[:tasks_mode])
+          response.isIncomplete = false
+          return response
+        end
+
         item = result[:model]
 
         case item.class.to_s
@@ -125,6 +133,70 @@ module PuppetLanguageServer
         response.items = items
         response.isIncomplete = incomplete
         response
+      end
+
+      #TODO Private
+      def self.complete_method_items(result, session_state, tasks_mode)
+        require 'puppet-languageserver/manifest/inferencer'
+
+        method_items = []
+
+        exclude_origins = tasks_mode ? [] : [:bolt]
+        session_state.object_cache.objects_by_section(:function, :exclude_origins => exclude_origins) do |func_name, func|
+          next if func.signatures.nil? || func.signatures.empty?
+          next unless func.signatures.any? { |sig| sig.parameters.count > 0 }
+          method_items << LSP::CompletionItem.new(
+                            'label'  => func_name.to_s,
+                            'kind'   => LSP::CompletionItemKind::FUNCTION,
+                            'detail' => 'Function',
+                            'data'   => {
+                              'type' => 'function',
+                              'name' => func_name.to_s
+                            }
+                          )
+        end
+
+        pops_type = case result.model
+                    when Puppet::Pops::Model::VariableExpression
+                      var_name = result.model.expr.value
+                      # Find the Puppet Data Type of the object
+                      inferencer = infer_ast(session_state, result.path[0])
+                      inference = inferencer.find(var_name, PuppetLanguageServer::Manifest::Inferencer::VariableInference)
+                      inference.nil? ? nil : inference.puppet_type
+                    else
+                      nil
+                    end
+
+        return method_items if pops_type.nil? || pops_type.name == 'Any'
+        type_name = pops_type.is_a?(Puppet::Pops::Types::PTypeReferenceType) ? pops_type.type_string : pops_type.name
+
+        puppet_data_type = PuppetLanguageServer::PuppetHelper.datatype(session_state, type_name, tasks_mode)
+        return method_items if puppet_data_type.nil?
+
+        # Add the data type attributes
+        puppet_data_type.attributes.each do |type_attr|
+          method_items << LSP::CompletionItem.new(
+                            'label'  => type_attr.key,
+                            'kind'   => LSP::CompletionItemKind::PROPERTY,
+                            'detail' => 'Property',
+                            'data'   => {
+                              'type'      => 'datatype_attribute',
+                              'datatype'  => puppet_data_type.key.to_s,
+                              'attribute' => type_attr.key.to_s
+                            }
+                          )
+        end
+
+        # TODO: add data type functions
+
+        method_items
+      end
+
+      #TODO private
+      def self.infer_ast(session_state, ast)
+        inferencer = PuppetLanguageServer::Manifest::Inferencer.new(session_state)
+        inferencer.infer(ast)
+        inferencer
       end
 
       # BEGIN CompletionItem Helpers
@@ -318,6 +390,19 @@ module PuppetLanguageServer
             result.documentation = doc
             result.insertText = "#{data['param']} => "
           end
+
+        when 'datatype_attribute'
+          # We don't know if this resolution is coming from a plan or not, so just assume it is
+          item_datatype = PuppetLanguageServer::PuppetHelper.datatype(session_state, data['datatype'], true)
+          return result if item_datatype.nil?
+          item_attr = item_datatype.attributes.find { |attr| attr.key.to_s == data['attribute'] }
+          return result if item_attr.nil?
+
+          doc = ''
+          doc += item_attr.types.to_s unless item_attr.types.nil?
+          doc += "---\n" + item_attr.doc unless item_attr.doc.nil?
+          result.documentation = doc
+          result.insertText = item_attr.key.to_s
         end
 
         result
