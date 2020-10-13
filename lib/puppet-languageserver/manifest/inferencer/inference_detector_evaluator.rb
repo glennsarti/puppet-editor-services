@@ -2,6 +2,7 @@
 
 require 'puppet-languageserver/manifest/inferencer/inferences'
 
+# rubocop:disable Naming/MethodName
 module PuppetLanguageServer
   module Manifest
     class Inferencer
@@ -13,7 +14,7 @@ module PuppetLanguageServer
         def initialize
           @debug = false
           @inferences = []
-          @inference_visitor ||= ::Puppet::Pops::Visitor.new(self, "infer", 2, nil)
+          @inference_visitor ||= ::Puppet::Pops::Visitor.new(self, 'infer', 2, nil)
         end
 
         # Creates an array that we can splat into LSP::Range
@@ -45,15 +46,15 @@ module PuppetLanguageServer
 
         def infer_Program(item, _parent_scope, _parent_ast)
           # TODO: Do we need a root scope?
-          #scope = ScopeInference.new(item, nil, nil)
-          #scope.range = create_range(0, item.source_text.length, item.locator)
-          #@inferences << scope
+          # scope = ScopeInference.new(item, nil, nil)
+          # scope.range = create_range(0, item.source_text.length, item.locator)
+          # @inferences << scope
 
           infer(item.body, nil, item)
         end
 
         # Containing POPs
-        def infer_HostClassDefinition(item, parent_scope, parent_ast)
+        def infer_HostClassDefinition(item, parent_scope, _parent_ast)
           inf = HostClassDefinitionInference.new(item, item.name, parent_scope)
           inf.range = create_range(item.offset, item.length, item.locator)
 
@@ -62,7 +63,7 @@ module PuppetLanguageServer
           infer_children_of(item, inf)
         end
 
-        def infer_PlanDefinition(item, parent_scope, parent_ast)
+        def infer_PlanDefinition(item, parent_scope, _parent_ast)
           inf = PlanDefinitionInference.new(item, item.name, parent_scope)
           inf.range = create_range(item.offset, item.length, item.locator)
 
@@ -71,21 +72,20 @@ module PuppetLanguageServer
           infer_children_of(item, inf)
         end
 
-        def infer_ResourceExpression(item, parent_scope, parent_ast)
+        def infer_ResourceExpression(item, parent_scope, _parent_ast)
           inf = ResourceExpressionInference.new(item, item.type_name.value, parent_scope)
           inf.range = create_range(item.offset, item.length, item.locator)
 
           if item.bodies.count >= 1
             # Ick!   What about multi resource declarations?
-            inf.name = item.type_name.value + ': ' +
-                locator_text(item.bodies.first.title.offset, item.bodies.first.title.length, item.bodies.first.title.locator)
+            inf.name = item.type_name.value + ': ' + locator_text(item.bodies.first.title.offset, item.bodies.first.title.length, item.bodies.first.title.locator)
           end
 
           @inferences << inf
           nil
         end
 
-        def infer_LambdaExpression(item, parent_scope, parent_ast)
+        def infer_LambdaExpression(item, _parent_scope, _parent_ast)
           # Lambdas have no name (Duh!) but we still need the scope information
           scope = ScopeInference.new(item, nil, nil)
           scope.range = create_range(item.offset, item.length, item.locator)
@@ -94,13 +94,11 @@ module PuppetLanguageServer
           infer_children_of(item, scope)
         end
 
-        def infer_Parameter(item, parent_scope, parent_ast)
+        def infer_Parameter(item, parent_scope, _parent_ast)
           inf = ParameterInference.new(item, item.name, parent_scope)
           inf.scope = parent_scope
           inf.range = create_range(item.offset, item.length, item.locator)
-          unless item.value.nil?
-            inf.default_value = locator_text(item.value.offset, item.value.length, item.value.locator)
-          end
+          inf.default_value = locator_text(item.value.offset, item.value.length, item.value.locator) unless item.value.nil?
 
           @inferences << inf
           nil
@@ -127,7 +125,7 @@ module PuppetLanguageServer
           # We need to have a parent
           return infer_children_of(item, parent_scope) if parent_ast.nil?
           # The parent needs to be an AssignmentExpression
-          return infer_children_of(item, parent_scope) unless parent_ast._pcore_type.name == "Puppet::AST::AssignmentExpression"
+          return infer_children_of(item, parent_scope) unless parent_ast._pcore_type.name == 'Puppet::AST::AssignmentExpression'
           # We need to be the on the left hand-side of the assignment
           return infer_children_of(item, parent_scope) unless parent_ast.left_expr == item
 
@@ -138,7 +136,7 @@ module PuppetLanguageServer
           infer_children_of(item, parent_scope)
         end
 
-        def infer_Object(item, parent_scope, parent_ast)
+        def infer_Object(item, parent_scope, _parent_ast)
           # Always traverse any child objects?
           puts "WASIGNORED #{item._pcore_type.name}" if @debug && item.respond_to?(:_pcore_type)
           infer_children_of(item, parent_scope)
@@ -153,3 +151,4 @@ module PuppetLanguageServer
     end
   end
 end
+# rubocop:enable Naming/MethodName

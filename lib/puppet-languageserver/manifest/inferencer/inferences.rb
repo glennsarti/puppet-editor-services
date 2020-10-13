@@ -13,14 +13,13 @@ module PuppetLanguageServer
         attr_accessor :ast_object_id
 
         def initialize(ast_source, name = nil, scope = nil)
-          # We use object_ids to, hopefully, improve garbage collection etc. May not be true 🤷‍♂️
+          # We use object_ids to, hopefully, improve garbage collection etc. May not be true
           @ast_object_id = ast_source.object_id.to_s
           @name = name
           @scope = scope
-          @range = nil #TODO Build this from ast_source?
+          @range = nil # TODO: Build this from ast_source?
           @children = []
           scope.children << self unless scope.nil?
-          puppet_type = Puppet::Pops::Types::TypeFactory.any if self.respond_to?(:puppet_type)
         end
 
         def to_lsp_symbol; end
@@ -65,6 +64,11 @@ module PuppetLanguageServer
 
       class VariableInference < BaseInference
         attr_accessor :puppet_type
+
+        def initialize(*_)
+          super
+          @puppet_type = Puppet::Pops::Types::TypeFactory.any
+        end
 
         def to_s
           "[#{self.class}] #{name} is a #{puppet_type}"

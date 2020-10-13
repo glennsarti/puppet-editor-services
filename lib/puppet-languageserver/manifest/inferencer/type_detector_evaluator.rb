@@ -4,6 +4,8 @@ require 'puppet/pops/types/type_factory'
 require 'puppet/pops/types/type_parser'
 require 'puppet-languageserver/manifest/inferencer/function_inferencer'
 
+# rubocop:disable Style/AsciiComments
+# rubocop:disable Naming/MethodName
 module PuppetLanguageServer
   module Manifest
     class Inferencer
@@ -21,7 +23,7 @@ module PuppetLanguageServer
         def initialize(inferences, object_cache = nil)
           @debug = false
           @inferences = inferences
-          @inference_visitor = ::Puppet::Pops::Visitor.new(self, "infer", 0, nil)
+          @inference_visitor = ::Puppet::Pops::Visitor.new(self, 'infer', 0, nil)
           @function_inferencer = FunctionInferencer.new(self, object_cache)
           @type_parser = Puppet::Pops::Types::TypeParser.new
           # @calc = Puppet::Pops::Types::TypeCalculator.new
@@ -32,14 +34,14 @@ module PuppetLanguageServer
         end
 
         def find_inference(ast_object)
-          # TODO - This is quite a slow way to do this. Okay for small manifests but big ones?
+          # TODO: This is quite a slow way to do this. Okay for small manifests but big ones?
           find_str = ast_object.object_id.to_s
           @inferences.find { |inf| inf.ast_object_id == find_str }
         end
 
         def find_variable_inference(ast_object)
           var_name = ast_object.expr.value
-          # TODO - This is quite a slow way to do this. Okay for small manifests but big ones?
+          # TODO: This is quite a slow way to do this. Okay for small manifests but big ones?
           @inferences.find { |inf| inf.is_a?(VariableInference) && inf.name == var_name }
         end
 
@@ -139,7 +141,7 @@ module PuppetLanguageServer
           result = @function_inferencer.calculate_function_call_types(function_name, parameter_types, item.lambda)
           # Still need to process the children
           infer_children_of(item)
-          return result
+          result
         end
 
         def infer_VariableExpression(item)
@@ -160,11 +162,11 @@ module PuppetLanguageServer
           type_arithmetic_result(type_left, type_right)
         end
 
-        def infer_InExpression(item)
+        def infer_InExpression(_item)
           Puppet::Pops::Types::TypeFactory.boolean
         end
 
-        def infer_ComparisonExpression(item)
+        def infer_ComparisonExpression(_item)
           Puppet::Pops::Types::TypeFactory.boolean
         end
 
@@ -192,14 +194,13 @@ module PuppetLanguageServer
           Puppet::Pops::Types::TypeFactory.boolean(type_left.value || type_right.value)
         end
 
-        def infer_MatchExpression(item)
+        def infer_MatchExpression(_item)
           Puppet::Pops::Types::TypeFactory.boolean
         end
 
         def infer_AccessExpression(item)
           # Ref - https://github.com/puppetlabs/puppet-specifications/blob/4e54d7a8c1e8f16c1cdbc44d4b5537c27784e7cd/language/expressions.md#--access-operator
           left_type = infer(item.left_expr)
-
           # Strings
           if left_type.instance_of?(Puppet::Pops::Types::PStringType)
             # If it's 'String[..., ...] parse the type
@@ -225,18 +226,27 @@ module PuppetLanguageServer
           # SemVer is always a SemVer
           return left_type if left_type.instance_of?(Puppet::Pops::Types::PSemVerType)
 
+          # Resources could have zero, one or two parameters
+          if left_type.instance_of?(Puppet::Pops::Types::PResourceType)
+            return left_type if item.keys.count < 1 || item.keys.count > 2
+            type_text = 'Resource[' + ast_text(item.keys[0])
+            type_text += ", #{ast_text(item.keys[1])}" if item.keys.count > 1
+            type_text += ']'
+            return @type_parser.parse(type_text)
+          end
+
           # Somewhat catch all for:
           # Regular Expressions, Patterns, Enums, Hashes etc.
           # We can't really infer too much here as the arguments to the expression could be anything (Function, literal, expression etc.)
           # But we _always_ know the generic type, just not the specifics
-          return infer(item.left_expr) if item.left_expr.is_a?(Puppet::Pops::Model::QualifiedReference)
+          return left_type if item.left_expr.is_a?(Puppet::Pops::Model::QualifiedReference)
 
           infer_children_of(item)
         end
 
         # POP Literal Types or obvious type assignment
         def infer_QualifiedReference(item)
-         # A QualifiedReference (i.e. a capitalized qualified name such as Foo, or Foo::Bar) evaluates to a PTypeType
+          # A QualifiedReference (i.e. a capitalized qualified name such as Foo, or Foo::Bar) evaluates to a PTypeType
           # TODO  This may actually call REAL class loading... need to not use it
           @type_parser.parse(ast_text(item))
         end
@@ -319,11 +329,7 @@ module PuppetLanguageServer
         # Catch all
         def infer_Object(item)
           # Ignore any other object types
-          puts "TYPES Ignornig #{item.class.to_s}" if @debug
-
-          #infer_children_of(item)
-          # Always traverse any child objects?
-          #item._pcore_contents { |child| infer(child) }
+          puts "TYPES Ignornig #{item.class}" if @debug
           infer_children_of(item)
         end
 
@@ -335,7 +341,7 @@ module PuppetLanguageServer
           # TODO: Should we squish down Variant/s?
           # e.g. [ Variant[String, Integer], Variant[Undef] ] should be Variant[String, Integer, Undef]
 
-          object_types.reduce({ result: [], found: []}) do |acc, object_type|
+          object_types.reduce({ result: [], found: [] }) do |acc, object_type| # rubocop:disable Style/EachWithObject
             type_name = object_type.to_s
             unless acc[:found].include?(type_name)
               acc[:result] << object_type
@@ -375,7 +381,7 @@ module PuppetLanguageServer
           end
 
           # Catch all. If we don't know, return the default type
-          return default_type
+          default_type
 
           # #---- THIS IS ALL WRONG!!!
           # #
@@ -555,3 +561,5 @@ module PuppetLanguageServer
     end
   end
 end
+# rubocop:enable Style/AsciiComments
+# rubocop:enable Naming/MethodName

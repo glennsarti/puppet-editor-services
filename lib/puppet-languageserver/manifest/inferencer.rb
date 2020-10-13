@@ -7,7 +7,7 @@ module PuppetLanguageServer
       attr_accessor :debug
 
       def initialize(session_state = nil)
-        @debug = false #true
+        @debug = false # true
         @inferences = []
         @object_cache = session_state.nil? ? nil : session_state.object_cache
       end
@@ -20,28 +20,28 @@ module PuppetLanguageServer
         inferences.select { |item| (name.nil? || item.name == name) && item.is_a?(inference_class) }
       end
 
-      def infer(ast, root_name = '')
-        puts "---- Content" if @debug
+      def infer(ast, _root_name = '')
+        puts '---- Content' if @debug
         ::Puppet::Pops::Adapters::SourcePosAdapter.adapt(ast.model.body).extract_text if @debug
-        puts "----" if @debug
+        puts '----' if @debug
 
         # First pass, find all of the possible inference points
         pass_one = InferenceDetectorEvaluator.new
-        #pass_one.debug = @debug
+        # pass_one.debug = @debug
         pass_one.infer(ast, nil)
         @inferences = pass_one.inferences
 
-        puts "---- Phase 1 inferences" if @debug
+        puts '---- Phase 1 inferences' if @debug
         @inferences.each { |i| puts "[#{i.class}] #{i.name}" } if @debug
-        puts "----" if @debug
+        puts '----' if @debug
 
         pass_two = TypeDetectorEvaluator.new(@inferences, @object_cache)
         pass_two.debug = @debug
         pass_two.infer(ast)
 
-        puts "---- Phase 2 inferences" if @debug
+        puts '---- Phase 2 inferences' if @debug
         @inferences.each { |i| puts "[#{i.class}] #{i.name} is a #{i.respond_to?(:puppet_type) ? i.puppet_type : 'N/A'}" } if @debug
-        puts "----" if @debug
+        puts '----' if @debug
 
         nil
       end

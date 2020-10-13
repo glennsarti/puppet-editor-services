@@ -69,15 +69,15 @@ module PuppetLanguageServer
           :tasks_mode => false
         }.merge(options)
 
-# puts "-------------------------- CONTENT"
-# puts content
-# puts "--------------------------"
+        # puts "-------------------------- CONTENT"
+        # puts content
+        # puts "--------------------------"
 
         parser = Puppet::Pops::Parser::Parser.new
         result = parser.singleton_parse_string(content, options[:tasks_mode], '')
 
-        require 'puppet-languageserver/manifest/manifest_inferencer'
-        inferrer = PuppetLanguageServer::Manifest::ManifestInferencer::ManifestInferences.new
+        require 'puppet-languageserver/manifest/inferencer'
+        inferrer = PuppetLanguageServer::Manifest::Inferencer.new
         inferrer.infer(result)
 
         symbols = inferrer.inferences

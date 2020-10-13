@@ -879,12 +879,33 @@ describe 'PuppetLanguageServer::Manifest::Inferencer' do
     context 'with Resource' do
       let(:content) do
         <<-EOT
+        $res1 = Resource
+        EOT
+      end
+
+      it_behaves_like 'an exact type detector', 'res1'
+    end
+
+    context 'with Resource type' do
+      let(:content) do
+        <<-EOT
         $res1 = Resource['file']
         EOT
       end
 
-      it_behaves_like 'an exact type detector', 'res1' # TODO: Can this be solved staticly?
+      it_behaves_like 'an exact type detector', 'res1'
     end
+
+    context 'with Resource type and title' do
+      let(:content) do
+        <<-EOT
+        $res1 = Resource['file','/something']
+        EOT
+      end
+
+      it_behaves_like 'an exact type detector', 'res1'
+    end
+
 
     context 'with a fake Resource' do
       let(:content) do
@@ -893,8 +914,7 @@ describe 'PuppetLanguageServer::Manifest::Inferencer' do
         EOT
       end
 
-      # Can't use 'a type detector' here because the resources don't actually exist
-      it_behaves_like 'an exact type inferrer', 'res1', 'Resource'
+      it_behaves_like 'an exact type detector', 'res1'
     end
 
     context 'with Integer' do

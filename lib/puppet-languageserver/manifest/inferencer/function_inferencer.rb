@@ -16,9 +16,7 @@ module PuppetLanguageServer
         def calculate_function_call_types(func_name, parameter_types, func_lambda)
           result = calculate_default_function_call_types(func_name, parameter_types, func_lambda)
 
-          if result.nil? && !@object_cache.nil?
-            result = calculate_object_cache_function_call(func_name, parameter_types, func_lambda)
-          end
+          result = calculate_object_cache_function_call(func_name, parameter_types, func_lambda) if result.nil? && !@object_cache.nil?
 
           # puts result
           # TODO return if no lambda
@@ -28,7 +26,7 @@ module PuppetLanguageServer
           result
         end
 
-        def calculate_object_cache_function_call(func_name, parameter_types, func_lambda)
+        def calculate_object_cache_function_call(func_name, parameter_types, _func_lambda)
           func = @object_cache.object_by_name(:function, func_name, fuzzy_match: true)
           return nil if func.nil? || func.signatures.empty?
 
@@ -221,12 +219,11 @@ module PuppetLanguageServer
           # with
           when 'yaml_data'
             @type_detector.default_type
-          else
-            nil
           end
+          nil
         end
 
-        def calculate_abs_function(parameter_types, func_lambda)
+        def calculate_abs_function(parameter_types, _func_lambda)
           return @type_detector.default_type unless parameter_types.count == 1
           return Puppet::Pops::Types::TypeFactory.numeric if parameter_types[0].is_a?(Puppet::Pops::Types::PStringType)
 
@@ -275,7 +272,7 @@ module PuppetLanguageServer
           return_type
         end
 
-        def set_param_types(lambda_inf, &block)
+        def set_param_types(lambda_inf, &_block)
           params = lambda_inf.children.select { |child| child.is_a?(ParameterInference) }
           new_param_types = yield params.count
           return if new_param_types.nil? || !new_param_types.is_a?(Array) || new_param_types.empty?

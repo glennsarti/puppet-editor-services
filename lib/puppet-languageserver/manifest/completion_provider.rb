@@ -135,7 +135,7 @@ module PuppetLanguageServer
         response
       end
 
-      #TODO Private
+      # TODO: Private
       def self.complete_method_items(result, session_state, tasks_mode)
         require 'puppet-languageserver/manifest/inferencer'
 
@@ -146,14 +146,14 @@ module PuppetLanguageServer
           next if func.signatures.nil? || func.signatures.empty?
           next unless func.signatures.any? { |sig| sig.parameters.count > 0 }
           method_items << LSP::CompletionItem.new(
-                            'label'  => func_name.to_s,
-                            'kind'   => LSP::CompletionItemKind::FUNCTION,
-                            'detail' => 'Function',
-                            'data'   => {
-                              'type' => 'function',
-                              'name' => func_name.to_s
-                            }
-                          )
+            'label'  => func_name.to_s,
+            'kind'   => LSP::CompletionItemKind::FUNCTION,
+            'detail' => 'Function',
+            'data'   => {
+              'type' => 'function',
+              'name' => func_name.to_s
+            }
+          )
         end
 
         pops_type = case result.model
@@ -163,8 +163,6 @@ module PuppetLanguageServer
                       inferencer = infer_ast(session_state, result.path[0])
                       inference = inferencer.find(var_name, PuppetLanguageServer::Manifest::Inferencer::VariableInference)
                       inference.nil? ? nil : inference.puppet_type
-                    else
-                      nil
                     end
 
         return method_items if pops_type.nil? || pops_type.name == 'Any'
@@ -176,15 +174,15 @@ module PuppetLanguageServer
         # Add the data type attributes
         puppet_data_type.attributes.each do |type_attr|
           method_items << LSP::CompletionItem.new(
-                            'label'  => type_attr.key,
-                            'kind'   => LSP::CompletionItemKind::PROPERTY,
-                            'detail' => 'Property',
-                            'data'   => {
-                              'type'      => 'datatype_attribute',
-                              'datatype'  => puppet_data_type.key.to_s,
-                              'attribute' => type_attr.key.to_s
-                            }
-                          )
+            'label'  => type_attr.key,
+            'kind'   => LSP::CompletionItemKind::PROPERTY,
+            'detail' => 'Property',
+            'data'   => {
+              'type'      => 'datatype_attribute',
+              'datatype'  => puppet_data_type.key.to_s,
+              'attribute' => type_attr.key.to_s
+            }
+          )
         end
 
         # TODO: add data type functions
@@ -192,7 +190,7 @@ module PuppetLanguageServer
         method_items
       end
 
-      #TODO private
+      # TODO: private
       def self.infer_ast(session_state, ast)
         inferencer = PuppetLanguageServer::Manifest::Inferencer.new(session_state)
         inferencer.infer(ast)
